@@ -1,9 +1,8 @@
 //char_engine
-//version 1 revision 1
-//changed from previous: added display of multiple instruction, and memory values.
+//version 1 revision 2
 
-//This character display engine works with the MIPS cpu project to display various information from the project onto a vga-monitor.
-//There is a built in hex engine that runs off the 3 data sources from the project.
+//This character display engine works binary data sources, and outputs the corresponding values in hexadecimal.
+//This implementation was designed for use as a debugging interface for a MIPS processor project. However any data can be used.
 //Characters are 8 * 8 pixels each with a blank line above each character, allowing allowing 80 * 53 characters on screen.
 
 
@@ -29,7 +28,7 @@ module char_engine(
 	reg [31:0] data;
 	reg [3:0] hex_buffer[0:7];
 	reg [63:0] mem_buffer;
-	integer hexX, data_index, reg_index, row, column, slice_delay, decode_delay, num_chars, k, x, y;
+	integer data_index, reg_index, row, column, slice_delay, decode_delay, num_chars, k, x, y;
 	
 	initial begin
 	slice_delay = 0;

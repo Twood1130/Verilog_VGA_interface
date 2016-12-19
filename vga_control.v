@@ -7,6 +7,7 @@
 //An even more clever person could figure out how to use the onboard SRAM as video memory, allowing 640*480 with an 8-bit color pallete.
 
 
+
 module vga_control (
 	input wire clock,
 	
