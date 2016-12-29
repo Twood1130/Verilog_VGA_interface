@@ -1,8 +1,9 @@
 //char_engine
-//version 1 revision 2
+//version 1 revision 1
+//changed from previous: added display of multiple instruction, and memory values.
 
-//This character display engine works binary data sources, and outputs the corresponding values in hexadecimal.
-//This implementation was designed for use as a debugging interface for a MIPS processor project. However any data can be used.
+//This character display engine works with the MIPS cpu project to display various information from the project onto a vga-monitor.
+//There is a built in hex engine that runs off the 3 data sources from the project.
 //Characters are 8 * 8 pixels each with a blank line above each character, allowing allowing 80 * 53 characters on screen.
 
 
@@ -26,9 +27,9 @@ module char_engine(
 	
 	reg [3:0] hex_digit;
 	reg [31:0] data;
-	reg [3:0] hex_buffer[0:7];
+	reg [5:0] hex_buffer[0:7];
 	reg [63:0] mem_buffer;
-	integer data_index, reg_index, row, column, slice_delay, decode_delay, num_chars, k, x, y;
+	integer hexX, data_index, reg_index, row, column, slice_delay, decode_delay, num_chars, k, x, y;
 	
 	initial begin
 	slice_delay = 0;
@@ -251,6 +252,282 @@ module char_engine(
 					mem_buffer[55:48] <= 8'b01100000;
 					mem_buffer[63:56] <= 8'b01100000;
 					end
+				
+			6'h10: begin //G
+					mem_buffer[7:0] <=   8'b00111100;
+					mem_buffer[15:8] <=  8'b01100000;
+					mem_buffer[23:16] <= 8'b01100000;
+					mem_buffer[31:24] <= 8'b01101110;
+					mem_buffer[39:32] <= 8'b01100110;
+					mem_buffer[47:40] <= 8'b01100110;
+					mem_buffer[55:48] <= 8'b01100110;
+					mem_buffer[63:56] <= 8'b00111100;
+					end
+					
+			6'h11: begin //H
+					mem_buffer[7:0] <=   8'b01100110;
+					mem_buffer[15:8] <=  8'b01100110;
+					mem_buffer[23:16] <= 8'b01100110;
+					mem_buffer[31:24] <= 8'b01111110;
+					mem_buffer[39:32] <= 8'b01100110;
+					mem_buffer[47:40] <= 8'b01100110;
+					mem_buffer[55:48] <= 8'b01100110;
+					mem_buffer[63:56] <= 8'b01100110;
+					end
+					
+			6'h12: begin //I
+					mem_buffer[7:0] <=   8'b01111110;
+					mem_buffer[15:8] <=  8'b00011000;
+					mem_buffer[23:16] <= 8'b00011000;
+					mem_buffer[31:24] <= 8'b00011000;
+					mem_buffer[39:32] <= 8'b00011000;
+					mem_buffer[47:40] <= 8'b00011000;
+					mem_buffer[55:48] <= 8'b00011000;
+					mem_buffer[63:56] <= 8'b01111110;
+					end
+					
+			6'h13: begin //J
+					mem_buffer[7:0] <=   8'b01111110;
+					mem_buffer[15:8] <=  8'b00000110;
+					mem_buffer[23:16] <= 8'b00000110;
+					mem_buffer[31:24] <= 8'b00000110;
+					mem_buffer[39:32] <= 8'b00000110;
+					mem_buffer[47:40] <= 8'b00000110;
+					mem_buffer[55:48] <= 8'b01100110;
+					mem_buffer[63:56] <= 8'b00111100;
+					end
+					
+			6'h14: begin //K
+					mem_buffer[7:0] <=   8'b01100110;
+					mem_buffer[15:8] <=  8'b01100110;
+					mem_buffer[23:16] <= 8'b01101100;
+					mem_buffer[31:24] <= 8'b01110000;
+					mem_buffer[39:32] <= 8'b01110000;
+					mem_buffer[47:40] <= 8'b01101100;
+					mem_buffer[55:48] <= 8'b01100110;
+					mem_buffer[63:56] <= 8'b01100110;
+					end
+					
+			6'h15: begin //I
+					mem_buffer[7:0] <=   8'b01100000;
+					mem_buffer[15:8] <=  8'b01100000;
+					mem_buffer[23:16] <= 8'b01100000;
+					mem_buffer[31:24] <= 8'b01100000;
+					mem_buffer[39:32] <= 8'b01100000;
+					mem_buffer[47:40] <= 8'b01100000;
+					mem_buffer[55:48] <= 8'b01100000;
+					mem_buffer[63:56] <= 8'b01111110;
+					end
+					
+			6'h16: begin //M
+					mem_buffer[7:0] <=   8'b01000010;
+					mem_buffer[15:8] <=  8'b01100110;
+					mem_buffer[23:16] <= 8'b01011010;
+					mem_buffer[31:24] <= 8'b01011010;
+					mem_buffer[39:32] <= 8'b01000010;
+					mem_buffer[47:40] <= 8'b01000010;
+					mem_buffer[55:48] <= 8'b01000010;
+					mem_buffer[63:56] <= 8'b01000010;
+					end
+					
+			6'h17: begin //N
+					mem_buffer[7:0] <=   8'b01000010;
+					mem_buffer[15:8] <=  8'b01000010;
+					mem_buffer[23:16] <= 8'b01100010;
+					mem_buffer[31:24] <= 8'b01010010;
+					mem_buffer[39:32] <= 8'b01001010;
+					mem_buffer[47:40] <= 8'b01000110;
+					mem_buffer[55:48] <= 8'b01000010;
+					mem_buffer[63:56] <= 8'b01000010;
+					end
+					
+			6'h18: begin //O
+					mem_buffer[7:0] <=   8'b00111100;
+					mem_buffer[15:8] <=  8'b01000010;
+					mem_buffer[23:16] <= 8'b01000010;
+					mem_buffer[31:24] <= 8'b01000010;
+					mem_buffer[39:32] <= 8'b01000010;
+					mem_buffer[47:40] <= 8'b01000010;
+					mem_buffer[55:48] <= 8'b01000010;
+					mem_buffer[63:56] <= 8'b00111100;
+					end
+					
+			6'h19: begin //P
+					mem_buffer[7:0] <=   8'b01111100;
+					mem_buffer[15:8] <=  8'b01000010;
+					mem_buffer[23:16] <= 8'b01000010;
+					mem_buffer[31:24] <= 8'b01000010;
+					mem_buffer[39:32] <= 8'b01111100;
+					mem_buffer[47:40] <= 8'b01100000;
+					mem_buffer[55:48] <= 8'b01100000;
+					mem_buffer[63:56] <= 8'b01100000;
+					end
+					
+			6'h1A: begin //Q
+					mem_buffer[7:0] <=   8'b00111100;
+					mem_buffer[15:8] <=  8'b01000010;
+					mem_buffer[23:16] <= 8'b01000010;
+					mem_buffer[31:24] <= 8'b01000010;
+					mem_buffer[39:32] <= 8'b01000010;
+					mem_buffer[47:40] <= 8'b01000010;
+					mem_buffer[55:48] <= 8'b01000100;
+					mem_buffer[63:56] <= 8'b00111010;
+					end
+					
+			6'h1B: begin //R
+					mem_buffer[7:0] <=   8'b00111100;
+					mem_buffer[15:8] <=  8'b01000010;
+					mem_buffer[23:16] <= 8'b01000010;
+					mem_buffer[31:24] <= 8'b01000010;
+					mem_buffer[39:32] <= 8'b01111100;
+					mem_buffer[47:40] <= 8'b0101100;
+					mem_buffer[55:48] <= 8'b01001100;
+					mem_buffer[63:56] <= 8'b01000110;
+					end
+					
+			6'h1C: begin //S
+					mem_buffer[7:0] <=   8'b00111100;
+					mem_buffer[15:8] <=  8'b01000000;
+					mem_buffer[23:16] <= 8'b01000000;
+					mem_buffer[31:24] <= 8'b00111100;
+					mem_buffer[39:32] <= 8'b00000010;
+					mem_buffer[47:40] <= 8'b00000010;
+					mem_buffer[55:48] <= 8'b00000010;
+					mem_buffer[63:56] <= 8'b00111100;
+					end
+					
+			6'h1D: begin //T
+					mem_buffer[7:0] <=   8'b01111110;
+					mem_buffer[15:8] <=  8'b00011000;
+					mem_buffer[23:16] <= 8'b00011000;
+					mem_buffer[31:24] <= 8'b00011000;
+					mem_buffer[39:32] <= 8'b00011000;
+					mem_buffer[47:40] <= 8'b00011000;
+					mem_buffer[55:48] <= 8'b00011000;
+					mem_buffer[63:56] <= 8'b00011000;
+					end
+					
+			6'h1E: begin //U
+					mem_buffer[7:0] <=   8'b01000010;
+					mem_buffer[15:8] <=  8'b01000010;
+					mem_buffer[23:16] <= 8'b01000010;
+					mem_buffer[31:24] <= 8'b01000010;
+					mem_buffer[39:32] <= 8'b01000010;
+					mem_buffer[47:40] <= 8'b01000010;
+					mem_buffer[55:48] <= 8'b01000010;
+					mem_buffer[63:56] <= 8'b00111100;
+					end
+					
+			6'h1F: begin //V
+					mem_buffer[7:0] <=   8'b01000010;
+					mem_buffer[15:8] <=  8'b01000010;
+					mem_buffer[23:16] <= 8'b01000010;
+					mem_buffer[31:24] <= 8'b01000010;
+					mem_buffer[39:32] <= 8'b01000010;
+					mem_buffer[47:40] <= 8'b01000010;
+					mem_buffer[55:48] <= 8'b00100100;
+					mem_buffer[63:56] <= 8'b00011000;
+					end
+					
+			6'h20: begin //W
+					mem_buffer[7:0] <=   8'b01000010;
+					mem_buffer[15:8] <=  8'b01000010;
+					mem_buffer[23:16] <= 8'b01000010;
+					mem_buffer[31:24] <= 8'b01000010;
+					mem_buffer[39:32] <= 8'b01011010;
+					mem_buffer[47:40] <= 8'b01011010;
+					mem_buffer[55:48] <= 8'b01100110;
+					mem_buffer[63:56] <= 8'b01000010;
+					end
+					
+			6'h21: begin //X
+					mem_buffer[7:0] <=   8'b01000010;
+					mem_buffer[15:8] <=  8'b01000010;
+					mem_buffer[23:16] <= 8'b00100100;
+					mem_buffer[31:24] <= 8'b00011000;
+					mem_buffer[39:32] <= 8'b00011000;
+					mem_buffer[47:40] <= 8'b00100100;
+					mem_buffer[55:48] <= 8'b01000010;
+					mem_buffer[63:56] <= 8'b01000010;
+					end
+					
+			6'h22: begin //Y
+					mem_buffer[7:0] <=   8'b01000010;
+					mem_buffer[15:8] <=  8'b01000010;
+					mem_buffer[23:16] <= 8'b01000010;
+					mem_buffer[31:24] <= 8'b00100100;
+					mem_buffer[39:32] <= 8'b00011000;
+					mem_buffer[47:40] <= 8'b00011000;
+					mem_buffer[55:48] <= 8'b00011000;
+					mem_buffer[63:56] <= 8'b00011000;
+					end
+					
+			6'h23: begin //Z
+					mem_buffer[7:0] <=   8'b01111110;
+					mem_buffer[15:8] <=  8'b00000110;
+					mem_buffer[23:16] <= 8'b00000110;
+					mem_buffer[31:24] <= 8'b00001100;
+					mem_buffer[39:32] <= 8'b00110000;
+					mem_buffer[47:40] <= 8'b01100000;
+					mem_buffer[55:48] <= 8'b01100000;
+					mem_buffer[63:56] <= 8'b01111110;
+					end
+					
+			6'h24: begin //space
+					mem_buffer[7:0] <=   8'b00000000;
+					mem_buffer[15:8] <=  8'b00000000;
+					mem_buffer[23:16] <= 8'b00000000;
+					mem_buffer[31:24] <= 8'b00000000;
+					mem_buffer[39:32] <= 8'b00000000;
+					mem_buffer[47:40] <= 8'b00000000;
+					mem_buffer[55:48] <= 8'b00000000;
+					mem_buffer[63:56] <= 8'b00000000;
+					end
+					
+			6'h25: begin //Filled
+					mem_buffer[7:0] <=   8'b11111111;
+					mem_buffer[15:8] <=  8'b11111111;
+					mem_buffer[23:16] <= 8'b11111111;
+					mem_buffer[31:24] <= 8'b11111111;
+					mem_buffer[39:32] <= 8'b11111111;
+					mem_buffer[47:40] <= 8'b11111111;
+					mem_buffer[55:48] <= 8'b11111111;
+					mem_buffer[63:56] <= 8'b11111111;
+					end
+					
+			6'h26: begin //-
+					mem_buffer[7:0] <=   8'b00000000;
+					mem_buffer[15:8] <=  8'b00000000;
+					mem_buffer[23:16] <= 8'b00000000;
+					mem_buffer[31:24] <= 8'b01111110;
+					mem_buffer[39:32] <= 8'b00000000;
+					mem_buffer[47:40] <= 8'b00000000;
+					mem_buffer[55:48] <= 8'b00000000;
+					mem_buffer[63:56] <= 8'b00000000;
+					end
+					
+			6'h27: begin //:
+					mem_buffer[7:0] <=   8'b00000000;
+					mem_buffer[15:8] <=  8'b00011000;
+					mem_buffer[23:16] <= 8'b00011000;
+					mem_buffer[31:24] <= 8'b00000000;
+					mem_buffer[39:32] <= 8'b00000000;
+					mem_buffer[47:40] <= 8'b00011000;
+					mem_buffer[55:48] <= 8'b00011000;
+					mem_buffer[63:56] <= 8'b00000000;
+					end
+					
+			6'h28: begin //.
+					mem_buffer[7:0] <=   8'b00000000;
+					mem_buffer[15:8] <=  8'b00000000;
+					mem_buffer[23:16] <= 8'b00000000;
+					mem_buffer[31:24] <= 8'b00000000;
+					mem_buffer[39:32] <= 8'b00000000;
+					mem_buffer[47:40] <= 8'b00000000;
+					mem_buffer[55:48] <= 8'b11000000;
+					mem_buffer[63:56] <= 8'b11000000;
+					end
+					
 			default: mem_buffer <= 63'h0000000000000000;
 		endcase	
 	endtask
