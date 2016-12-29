@@ -27,7 +27,7 @@ module char_engine(
 	
 	reg [3:0] hex_digit;
 	reg [31:0] data;
-	reg [5:0] hex_buffer[0:7];
+	reg [5:0] hex_buffer[0:11];
 	reg [63:0] mem_buffer;
 	integer hexX, data_index, reg_index, row, column, slice_delay, decode_delay, num_chars, k, x, y;
 	
@@ -36,7 +36,7 @@ module char_engine(
 	decode_delay = 0;
 	x = 0;
 	y = -1;
-	data_index = 4;
+	data_index = -1;
 	reg_index = 0;
 	end
 	
@@ -45,7 +45,7 @@ module char_engine(
 		if (x < 0) begin //source and slice steps
 			if (slice_delay == 0) data_index = data_index + 1;
 			source_data();
-			slice_data ();
+			if (data_index > 0) slice_data ();
 			slice_delay = slice_delay + 1;
 			if (slice_delay == 2) begin
 				x = num_chars - 1;
@@ -68,7 +68,7 @@ module char_engine(
 		
 		else if (y >= 0) begin //this step writes to memory
 			k = (y * 8) - 1;
-			mem_add <= (80 * y) + (800 * row) + (8 - (x + 1)) + (column); //this complicated formula tranlates information into a linear address
+			mem_add <= (80 * y) + (800 * row) + (12 - (x + 1)) + (column); //this complicated formula tranlates information into a linear address
 			mem_out <= mem_buffer[k -: 8];
 			y = y - 1;
 		end
@@ -539,35 +539,55 @@ module char_engine(
 		
 		case (data_index)
 			
-			0: begin 
+			0: begin //"INSTRUCTION" label
+				hex_buffer[11] <= 6'h12;
+				hex_buffer[10] <= 6'h17;
+				hex_buffer[9] <= 6'h1C;
+				hex_buffer[8] <= 6'h1D;
+				hex_buffer[7] <= 6'h1B;
+				hex_buffer[6] <= 6'h1E;
+				hex_buffer[5] <= 6'h0C;
+				hex_buffer[4] <= 6'h1D;
+				hex_buffer[3] <= 6'h15;
+				hex_buffer[2] <= 6'h18;
+				hex_buffer[1] <= 6'h17;
+				hex_buffer[0] <= 6'h1C;
+				
+				row = 0;
+				column = 2;
+				num_chars = 12;
+				end
+				
+				
+			1: begin 
 					data <= reg_index;
 					column = 2;
-					row = reg_index;
+					row = reg_index + 1;
 					num_chars = 2;
 				end
 			
-			1: begin 
+			0: begin 
 					data <= ins_data;
 					column = 11;
 					row = reg_index;
 					num_chars = 8;
 				end
 			
-			2: begin 
+			3: begin 
 					data <= reg_index;
 					column = 21;
 					row = reg_index;
 					num_chars = 2;
 				end
 			
-			3: begin 
+			4: begin 
 					data <= mem_data;
 					column = 30;
 					row = reg_index;
 					num_chars = 8;
 				end
 			
-			4: begin
+			5: begin
 					data <= 0;
 					data[4:0] <= reg_index;
 					column = 40;
@@ -575,7 +595,7 @@ module char_engine(
 					num_chars = 2;
 				end
 				
-			5: begin // 4 and 5 are the loop that prints the register data, exiting at the end of the 32nd loop
+			6: begin // 5 and 6 are the loop that prints the register data, exiting at the end of the 32nd loop
 					reg_sw <= reg_index;
 					data <= reg_data;
 					column = 49;
