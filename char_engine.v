@@ -1,15 +1,15 @@
 //char_engine
-//version 1 revision 1
-//changed from previous: added display of multiple instruction, and memory values.
+//version 2 (in progress)
+//changed from previous: extending the character set to support the full alphabet, and special characters
 
-//This character display engine works with the MIPS cpu project to display various information from the project onto a vga-monitor.
+//This character display enginne is designed to work with CPU developement projects, and displays various information from the project onto a vga-monitor.
 //There is a built in hex engine that runs off the 3 data sources from the project.
 //Characters are 8 * 8 pixels each with a blank line above each character, allowing allowing 80 * 53 characters on screen.
 
 
 
 module char_engine(
-	input wire clock25,
+	input wire clock,
 
 	input wire [31:0] ins_data,
 	input wire [31:0] mem_data,
@@ -40,7 +40,7 @@ module char_engine(
 	reg_index = 0;
 	end
 	
-	always @(posedge clock25) begin //semi-pipelined design, only executes one if statement per clock
+	always @(posedge clock) begin //semi-pipelined design, only executes one if statement per clock
 				
 		if (x < 0) begin //source and slice steps
 			if (slice_delay == 0) data_index = data_index + 1;
