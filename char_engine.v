@@ -45,7 +45,7 @@ module char_engine(
 		if (x < 0) begin //source and slice steps
 			if (slice_delay == 0) data_index = data_index + 1;
 			source_data();
-			if (data_index > 0) slice_data ();
+			if (data_index > 2) slice_data ();
 			slice_delay = slice_delay + 1;
 			if (slice_delay == 2) begin
 				x = num_chars - 1;
@@ -538,74 +538,110 @@ module char_engine(
 		mem_sw <= reg_index;
 		
 		case (data_index)
-			0: begin //"INSTRUCTIONS" label
-				hex_buffer[11] <= 6'h12;
-				hex_buffer[10] <= 6'h17;
-				hex_buffer[9] <= 6'h1C;
-				hex_buffer[8] <= 6'h1D;
-				hex_buffer[7] <= 6'h1B;
-				hex_buffer[6] <= 6'h1E;
-				hex_buffer[5] <= 6'h0C;
-				hex_buffer[4] <= 6'h1D;
-				hex_buffer[3] <= 6'h12;
+			0: begin //"INS. MEMORY" label
+				hex_buffer[10] <= 6'h12;
+				hex_buffer[9] <= 6'h17;
+				hex_buffer[8] <= 6'h1C;
+				hex_buffer[7] <= 6'h28;
+				hex_buffer[6] <= 6'h24;
+				hex_buffer[5] <= 6'h16;
+				hex_buffer[4] <= 6'h0E;
+				hex_buffer[3] <= 6'h16;
 				hex_buffer[2] <= 6'h18;
-				hex_buffer[1] <= 6'h17;
-				hex_buffer[0] <= 6'h1C;
+				hex_buffer[1] <= 6'h1B;
+				hex_buffer[0] <= 6'h22;
 				
 				row = 0;
-				column = 2;
-				num_chars = 12;
+				column = 0;
+				num_chars = 11;
+				end
+			
+			1: begin //"DATA MEMORY" label
+					hex_buffer[10] <= 6'h0D;
+					hex_buffer[9] <= 6'h0A;
+					hex_buffer[8] <= 6'h1D;
+					hex_buffer[7] <= 6'h0A;
+					hex_buffer[6] <= 6'h24;
+					hex_buffer[5] <= 6'h16;
+					hex_buffer[4] <= 6'h0E;
+					hex_buffer[3] <= 6'h16;
+					hex_buffer[2] <= 6'h18;
+					hex_buffer[1] <= 6'h1B;
+					hex_buffer[0] <= 6'h22;
+					
+					row = 0;
+					column = 13;
+					num_chars = 11;
 				end
 				
-			1: begin 
+			2: begin //"REGISTERS" label
+					hex_buffer[8] <= 6'h1B;
+					hex_buffer[7] <= 6'h0E;
+					hex_buffer[6] <= 6'h10;
+					hex_buffer[5] <= 6'h12;
+					hex_buffer[4] <= 6'h1C;
+					hex_buffer[3] <= 6'h1D;
+					hex_buffer[2] <= 6'h0E;
+					hex_buffer[1] <= 6'h1B;
+					hex_buffer[0] <= 6'h1C;
+					
+					row = 0;
+					column = 26;
+					num_chars = 9;
+				end
+				
+			3: begin //instruction memory indexes
 					data <= reg_index;
 					column = 0;
 					row = reg_index + 1;
 					num_chars = 2;
 				end
-			
-			2: begin 
-					data <= ins_data;
-					column = 3;
-					row = reg_index + 1;
-					num_chars = 8;
-				end
-			
-			3: begin 
-					data <= reg_index;
-					column = 21;
-					row = reg_index;
-					num_chars = 2;
-				end
-			
-			4: begin 
-					data <= mem_data;
-					column = 30;
-					row = reg_index;
-					num_chars = 8;
-				end
-			
-			5: begin
+				
+			4: begin //register indexes
 					data <= 0;
 					data[4:0] <= reg_index;
-					column = 40;
-					row = reg_index;
+					column = 26;
+					row = reg_index + 1;
 					num_chars = 2;
 				end
+						
+			5: begin //data_memory indexes
+					data <= reg_index;
+					column = 13;
+					row = reg_index + 1;
+					num_chars = 2;
+				end
+			
+			6: begin //instruction memory data
+					data <= ins_data;
+					column = 2;
+					row = reg_index + 1;
+					num_chars = 9;
+					hex_buffer[8] <= 6'h27;
+				end
+			
+			7: begin //data memory data
+					data <= mem_data; 
+					column = 15;
+					row = reg_index + 1;
+					num_chars = 9;
+					hex_buffer[8] <= 6'h27;
+				end
 				
-			6: begin // 4 and 5 are the loop that prints the register data, exiting at the end of the 32nd loop
+			8: begin // register data
 					reg_sw <= reg_index;
 					data <= reg_data;
-					column = 49;
-					row = reg_index;
-					num_chars = 8;
+					column = 28;
+					row = reg_index + 1;
+					num_chars = 9;
+					hex_buffer[8] <= 6'h27;
 					if (slice_delay == 1) reg_index = reg_index + 1;
 					if (reg_index == 32) begin
 						reg_index = 0;
 					end
 				end
 							
-			default: data_index = 0;
+			default: data_index = 2;
 		endcase
 	endtask
 	
