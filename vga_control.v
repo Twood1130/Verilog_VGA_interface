@@ -46,8 +46,8 @@ module vga_control (
 		if ((hcount < (hres + hfront)) || (hcount > (hres + hfront + hsync))) vga_hsync <= 1'b1; //sets hsync
 		else vga_hsync <= 1'b0;
 	
-		if ((vcount < (vres + vfront)) || (vcount > (vres + vfront + vsync))) vga_vsync <= 1'b1; //sets hsync
-		else vga_vsync <= 1'b0;
+		if ((vcount < (vres + vfront)) || (vcount > (vres + vfront + vsync))) vga_vsync <= 1'b0; //sets hsync
+		else vga_vsync <= 1'b1;
 	
 		if (hcount == htotal) begin //increments vcount
 			hcount = 0;
@@ -59,7 +59,7 @@ module vga_control (
 			vcount = 0;
 		end
 		
-		if ((hcount < hres) && (vcount < vres)) begin //set memory address, and vblank
+		if ((hcount <= hres) && (vcount <= vres)) begin //set memory address, and vblank
 			mem_add <= ((vcount * hres) + hcount);
 			vga_blank <= 1'b1;
 		end
