@@ -8,31 +8,36 @@
 
 module char_engine(
 	input wire clock,
+	input wire project_clock,
 
-	input wire [31:0] ins_data,
+	input wire [31:0] ins_data, //these inputs are for the data to be displayed later
 	input wire [31:0] mem_data,
 	input wire [31:0] reg_data,
+	input wire [15:0] prg_counter,
+	input wire [15:0]	cycle_counter,
 	input wire [15:0] debug, //debug input
 	
-	output reg [0:7] mem_out,
+	output reg [7:0] mem_out,
 	output reg [15:0] mem_add,
 	output mem_write,
 	
 	output reg [4:0] reg_sw,
-	output reg [4:0] ins_sw,
-	output reg [4:0] mem_sw);
+	output reg [5:0] ins_sw,
+	output reg [5:0] mem_sw);
 	
 	assign mem_write = 1;
 	
 	reg [6:0] hex_digit;
 	reg [31:0] data;
-	reg [5:0] hex_buffer[0:17];
-	reg [5:0] debug_buffer[0:17];
+	reg [5:0] hex_buffer[0:19];
+	reg [5:0] debug_prebuffer[0:15];
+	reg [5:0] debug_buffer[0:19];
+	reg [15:0] pc_history[0:9];
 	reg [63:0] mem_buffer;
 	
 	integer debug_count;
 	
-	integer data_index, reg_index, row, column, slice_delay, decode_delay, num_chars, k, x, y, z;
+	integer data_index, reg_index, row, column, slice_delay, decode_delay, num_chars, k, x, y, z, spaces;
 	
 	initial begin
 	slice_delay = 0; //initial values for the character renderer
@@ -41,18 +46,6 @@ module char_engine(
 	y = -1;
 	data_index = -1;
 	reg_index = 0;
-	
-	//initial values for the debug indicators
-	debug_buffer[0] <= 6'h27;
-	debug_buffer[2] <= 6'h27;
-	debug_buffer[4] <= 6'h27;
-	debug_buffer[6] <= 6'h27;
-	debug_buffer[8] <= 6'h27;
-	debug_buffer[10] <= 6'h27;
-	debug_buffer[12] <= 6'h27;
-	debug_buffer[14] <= 6'h27;
-	debug_buffer[16] <= 6'h27;
-	
 	debug_count = 0;
 	end
 	
@@ -61,7 +54,7 @@ module char_engine(
 		if (x < 0) begin //source and slice steps
 			if (slice_delay == 0) data_index = data_index + 1;
 			source_data();
-			if (data_index > 3) slice_data ();
+			if (data_index > 6) slice_data ();
 			slice_delay = slice_delay + 1;
 			if (slice_delay == 2) begin
 				x = num_chars - 1;
@@ -92,17 +85,58 @@ module char_engine(
 	
 	always @(posedge clock) begin //debug indicators are set here
 		
-		if (debug[debug_count] == 1) debug_buffer[debug_count] <= debug_count + 1;
-		else debug_buffer[debug_count] <= 0;
+		if (debug[debug_count] == 1) debug_prebuffer[debug_count + spaces] <= 6'h1D; //this is the printed character for a true result, default = T
+		else debug_prebuffer[debug_count + spaces] <= 6'h0F; //this is the character printed for a false result, default = F
 		debug_count = debug_count + 1;
 		if (debug_count > 15) debug_count = 0;
-		
+	end
+	
+	always @(posedge project_clock) begin //the program counter history is set by this code, it is driven by the clock of the project so that the data does not update too fast
+		if (prg_counter != pc_history[0]) begin
+			pc_history[9] = pc_history[8];
+			pc_history[8] = pc_history[7];
+			pc_history[7] = pc_history[6];
+			pc_history[6] = pc_history[5];
+			pc_history[5] = pc_history[4];
+			pc_history[4] = pc_history[3];
+			pc_history[3] = pc_history[2];
+			pc_history[2] = pc_history[1];
+			pc_history[1] = pc_history[0];
+			pc_history[0] = prg_counter;
+		end
+	end
+	always begin 
+	//this is brute force way of building the debug buffer with spaces in it, the other methods used more logic units, and did not work properly due to timing issues
+	//this method uses constant assignment to build the proper string, which uses far fewer LUs.			
+		debug_buffer[0] = 6'h24;
+		debug_buffer[1] = debug_prebuffer[0];
+		debug_buffer[2] = debug_prebuffer[1];
+		debug_buffer[3] = debug_prebuffer[2];
+		debug_buffer[4] = debug_prebuffer[3];
+		debug_buffer[5] = 6'h24;
+		debug_buffer[6] = debug_prebuffer[4];
+		debug_buffer[7] = debug_prebuffer[5];
+		debug_buffer[8] = debug_prebuffer[6];
+		debug_buffer[9] = debug_prebuffer[7];
+		debug_buffer[10] = 6'h24;
+		debug_buffer[11] = debug_prebuffer[8];
+		debug_buffer[12] = debug_prebuffer[9];
+		debug_buffer[13] = debug_prebuffer[10];
+		debug_buffer[14] = debug_prebuffer[11];
+		debug_buffer[15] = 6'h24;
+		debug_buffer[16] = debug_prebuffer[12];
+		debug_buffer[17] = debug_prebuffer[13];
+		debug_buffer[18] = debug_prebuffer[14];
+		debug_buffer[19] = debug_prebuffer[15];
 	end
 	
 	task source_data; //This part of the module is the main task list for the renderer, it can be utilized in a variety of ways to render information.
 			
-		ins_sw <= reg_index;
-		mem_sw <= reg_index;
+		if (data_index == 10) ins_sw <= reg_index; //this code needs to be checked for accuracy, and may need to be shifted up by one.
+		if (data_index == 11) ins_sw <= reg_index + 32; //this code requests the data from memory to be printed on screen
+		if (data_index == 12) mem_sw <= reg_index;
+		if (data_index == 13) mem_sw <= reg_index + 32;
+		
 		
 		case (data_index)
 		//in the case of text labels, the hex_buffer is set manually for each character, and the data is only written to memory once.
@@ -138,7 +172,7 @@ module char_engine(
 					hex_buffer[0] <= 6'h22;
 					
 					row = 0;
-					column = 13;
+					column = 25;
 					num_chars = 11;
 				end
 				
@@ -154,74 +188,172 @@ module char_engine(
 					hex_buffer[0] <= 6'h1C;
 					
 					row = 0;
-					column = 26;
+					column = 50;
 					num_chars = 9;
 				end
 				
-				3: begin //debug task
+				3: begin //PRG. COUNTER label
+						hex_buffer[11] <= 6'h19;
+						hex_buffer[10] <= 6'h1B;
+						hex_buffer[9] <= 6'h10;
+						hex_buffer[8] <= 6'h28;
+						hex_buffer[7] <= 6'h24;
+						hex_buffer[6] <= 6'h0C;
+						hex_buffer[5] <= 6'h18;
+						hex_buffer[4] <= 6'h1E;
+						hex_buffer[3] <= 6'h17;
+						hex_buffer[2] <= 6'h1D;
+						hex_buffer[1] <= 6'h0E;
+						hex_buffer[0] <= 6'h1B;			
+					
+						row  = 0;
+						column = 63;
+						num_chars = 12;
+					end
+					
+				4: begin //CYCLES label
+						hex_buffer[6] <= 6'h0C;
+						hex_buffer[5] <= 6'h22;
+						hex_buffer[4] <= 6'h0C;
+						hex_buffer[3] <= 6'h15;
+						hex_buffer[2] <= 6'h0E;
+						hex_buffer[1] <= 6'h1C;
+						hex_buffer[0] <= 6'h27;
+				
+						row = 35;
+						column = 0;
+						num_chars = 7;
+					end
+				5: begin //DEBUG label
+						hex_buffer[4] <= 6'h0D;
+						hex_buffer[3] <= 6'h0E;
+						hex_buffer[2] <= 6'h0B;
+						hex_buffer[1] <= 6'h1E;
+						hex_buffer[0] <= 6'h10;
+				
+						row = 39;
+						column = 0;
+						num_chars = 5;
+					end
+				
+				6: begin //debug task
 					z = 0;
-					while (z <= 17) begin
+				
+					while (z <= 19) begin
 						hex_buffer[z] = debug_buffer[z];
 						z = z + 1;
 					end
+					
 					column = 0;
 					row = 40;
-					num_chars = 18;
+					num_chars = 20;
 				end
 				//data tasks send an address to various sources, and render the received data using the decoder.
-				
-			4: begin //instruction memory indexes
+			
+			7: begin //instruction memory indexes 00-31
 					data <= reg_index;
 					column = 0;
-					row = reg_index + 1;
-					num_chars = 2;
-				end
-				
-			5: begin //register indexes
-					data <= 0;
-					data[4:0] <= reg_index;
-					column = 26;
-					row = reg_index + 1;
-					num_chars = 2;
-				end
-						
-			6: begin //data_memory indexes
-					data <= reg_index;
-					column = 13;
 					row = reg_index + 1;
 					num_chars = 2;
 				end
 			
-			7: begin //instruction memory data
+			8: begin //instruction memory indexes 32-63
+					data <= reg_index + 32;
+					column = 12;
+					row = reg_index + 1;
+					num_chars = 2;
+				end	
+				
+			9: begin //data_memory indexes 00-31
+					data <= reg_index;
+					column = 25;
+					row = reg_index + 1;
+					num_chars = 2;
+				end
+				
+			10: begin //data_memory indexes 32-63
+					data <= reg_index + 32;
+					column = 37;
+					row = reg_index + 1;
+					num_chars = 2;
+				end
+				
+			11: begin //instruction memory data 00-31
 					data <= ins_data;
 					column = 2;
 					row = reg_index + 1;
 					num_chars = 9;
 					hex_buffer[8] <= 6'h27;
 				end
+				
+			12: begin //instruction memory data 32-63
+					data <= ins_data;
+					column = 14;
+					row = reg_index + 1;
+					num_chars = 9;
+					hex_buffer[8] <= 6'h27;
+				end
 			
-			8: begin //data memory data
+			13: begin //data memory data 00-31
 					data <= mem_data; 
-					column = 15;
+					column = 27;
+					row = reg_index + 1;
+					num_chars = 9;
+					hex_buffer[8] <= 6'h27;
+				end
+			
+			14: begin //data memory data 31-63
+					data <= mem_data; 
+					column = 39;
 					row = reg_index + 1;
 					num_chars = 9;
 					hex_buffer[8] <= 6'h27;
 				end
 				
-			9: begin // register data
+			15: begin //register indexes
+					data <= 0;
+					data[4:0] <= reg_index;
+					column = 50;
+					row = reg_index + 1;
+					num_chars = 2;
+				end
+				
+			16: begin // register data
 					reg_sw <= reg_index;
 					data <= reg_data;
-					column = 28;
+					column = 52;
 					row = reg_index + 1;
 					num_chars = 9;
 					hex_buffer[8] <= 6'h27;
 					if (slice_delay == 1) reg_index = reg_index + 1;
-					if (reg_index == 32) begin
+					if (reg_index == 32) begin //this resets the register index variable to zero once it reaches 32
 						reg_index = 0;
 					end
 				end
+			
+			17: begin //Cycles data
+					data <= cycle_counter; 
+					column = 8;
+					row = 35;
+					num_chars = 4;
+				end
+			
+			18: begin //pc history data
+					if (reg_index <= 9) begin
+						data <= pc_history[reg_index];
+						row = reg_index + 1;
+						column = 63;
+						num_chars = 4;
+					end
+				
+					else num_chars = 0; //setting num chars to 0 causes nothing to be written to memory, essentially aborting the source_data task
+				
+				end 
+			
+			//18: begin //Program counter data
+			
 							
-			default: data_index = 2;
+			default: data_index = 5;
 		endcase
 	endtask
 	
