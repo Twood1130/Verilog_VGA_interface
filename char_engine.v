@@ -8,15 +8,16 @@
 
 module char_engine(
 	input wire clock,
+	input wire project_clock,
 
 	input wire [31:0] ins_data, //these inputs are for the data to be displayed later
 	input wire [31:0] mem_data,
 	input wire [31:0] reg_data,
-	input wire [16:0] prg_counter,
-	input wire [16:0]	cycle_counter,
+	input wire [15:0] prg_counter,
+	input wire [15:0]	cycle_counter,
 	input wire [15:0] debug, //debug input
 	
-	output reg [0:7] mem_out,
+	output reg [7:0] mem_out,
 	output reg [15:0] mem_add,
 	output mem_write,
 	
@@ -31,6 +32,7 @@ module char_engine(
 	reg [5:0] hex_buffer[0:19];
 	reg [5:0] debug_prebuffer[0:15];
 	reg [5:0] debug_buffer[0:19];
+	reg [15:0] pc_history[0:9];
 	reg [63:0] mem_buffer;
 	
 	integer debug_count;
@@ -87,17 +89,22 @@ module char_engine(
 		else debug_prebuffer[debug_count + spaces] <= 6'h0F; //this is the character printed for a false result, default = F
 		debug_count = debug_count + 1;
 		if (debug_count > 15) debug_count = 0;
-		
-		//condition the data for readability
-		//every 5th character is a space
-		//if (spaces >= 4) spaces = 0;
-		//if (debug_count == 5) begin
-		//	debug_buffer[debug_count] <= 6'h24;
-		//	spaces = spaces + 1;
-		//end
-		
 	end
 	
+	always @(posedge project_clock) begin //the program counter history is set by this code, it is driven by the clock of the project so that the data does not update too fast
+		if (prg_counter != pc_history[0]) begin
+			pc_history[9] = pc_history[8];
+			pc_history[8] = pc_history[7];
+			pc_history[7] = pc_history[6];
+			pc_history[6] = pc_history[5];
+			pc_history[5] = pc_history[4];
+			pc_history[4] = pc_history[3];
+			pc_history[3] = pc_history[2];
+			pc_history[2] = pc_history[1];
+			pc_history[1] = pc_history[0];
+			pc_history[0] = prg_counter;
+		end
+	end
 	always begin 
 	//this is brute force way of building the debug buffer with spaces in it, the other methods used more logic units, and did not work properly due to timing issues
 	//this method uses constant assignment to build the proper string, which uses far fewer LUs.			
@@ -122,12 +129,13 @@ module char_engine(
 		debug_buffer[18] = debug_prebuffer[14];
 		debug_buffer[19] = debug_prebuffer[15];
 	end
+	
 	task source_data; //This part of the module is the main task list for the renderer, it can be utilized in a variety of ways to render information.
 			
-		if (data_index == 7) ins_sw <= reg_index; //this code needs to be checked for accuracy, and may need to be shifted up by one.
-		if (data_index == 8) ins_sw <= reg_index + 32; //this code requests the data from memory to be printed on screen
-		if (data_index == 9) mem_sw <= reg_index;
-		if (data_index == 10) mem_sw <= reg_index + 32;
+		if (data_index == 10) ins_sw <= reg_index; //this code needs to be checked for accuracy, and may need to be shifted up by one.
+		if (data_index == 11) ins_sw <= reg_index + 32; //this code requests the data from memory to be printed on screen
+		if (data_index == 12) mem_sw <= reg_index;
+		if (data_index == 13) mem_sw <= reg_index + 32;
 		
 		
 		case (data_index)
@@ -199,7 +207,7 @@ module char_engine(
 						hex_buffer[0] <= 6'h1B;			
 					
 						row  = 0;
-						column = 62;
+						column = 63;
 						num_chars = 12;
 					end
 					
@@ -322,12 +330,25 @@ module char_engine(
 						reg_index = 0;
 					end
 				end
+			
 			17: begin //Cycles data
 					data <= cycle_counter; 
 					column = 8;
 					row = 35;
 					num_chars = 4;
 				end
+			
+			18: begin //pc history data
+					if (reg_index <= 9) begin
+						data <= pc_history[reg_index];
+						row = reg_index + 1;
+						column = 63;
+						num_chars = 4;
+					end
+				
+					else num_chars = 0; //setting num chars to 0 causes nothing to be written to memory, essentially aborting the source_data task
+				
+				end 
 			
 			//18: begin //Program counter data
 			
