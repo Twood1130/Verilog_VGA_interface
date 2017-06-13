@@ -9,9 +9,11 @@
 module char_engine(
 	input wire clock,
 
-	input wire [31:0] ins_data,
+	input wire [31:0] ins_data, //these inputs are for the data to be displayed later
 	input wire [31:0] mem_data,
 	input wire [31:0] reg_data,
+	input wire [16:0] prg_counter,
+	input wire [16:0]	cycle_counter,
 	input wire [15:0] debug, //debug input
 	
 	output reg [0:7] mem_out,
@@ -50,7 +52,7 @@ module char_engine(
 		if (x < 0) begin //source and slice steps
 			if (slice_delay == 0) data_index = data_index + 1;
 			source_data();
-			if (data_index > 3) slice_data ();
+			if (data_index > 6) slice_data ();
 			slice_delay = slice_delay + 1;
 			if (slice_delay == 2) begin
 				x = num_chars - 1;
@@ -96,7 +98,9 @@ module char_engine(
 		
 	end
 	
-	always begin
+	always begin 
+	//this is brute force way of building the debug buffer with spaces in it, the other methods used more logic units, and did not work properly due to timing issues
+	//this method uses constant assignment to build the proper string, which uses far fewer LUs.			
 		debug_buffer[0] = 6'h24;
 		debug_buffer[1] = debug_prebuffer[0];
 		debug_buffer[2] = debug_prebuffer[1];
@@ -180,7 +184,51 @@ module char_engine(
 					num_chars = 9;
 				end
 				
-				3: begin //debug task
+				3: begin //PRG. COUNTER label
+						hex_buffer[11] <= 6'h19;
+						hex_buffer[10] <= 6'h1B;
+						hex_buffer[9] <= 6'h10;
+						hex_buffer[8] <= 6'h28;
+						hex_buffer[7] <= 6'h24;
+						hex_buffer[6] <= 6'h0C;
+						hex_buffer[5] <= 6'h18;
+						hex_buffer[4] <= 6'h1E;
+						hex_buffer[3] <= 6'h17;
+						hex_buffer[2] <= 6'h1D;
+						hex_buffer[1] <= 6'h0E;
+						hex_buffer[0] <= 6'h1B;			
+					
+						row  = 0;
+						column = 62;
+						num_chars = 12;
+					end
+					
+				4: begin //CYCLES label
+						hex_buffer[6] <= 6'h0C;
+						hex_buffer[5] <= 6'h22;
+						hex_buffer[4] <= 6'h0C;
+						hex_buffer[3] <= 6'h15;
+						hex_buffer[2] <= 6'h0E;
+						hex_buffer[1] <= 6'h1C;
+						hex_buffer[0] <= 6'h27;
+				
+						row = 35;
+						column = 0;
+						num_chars = 7;
+					end
+				5: begin //DEBUG label
+						hex_buffer[4] <= 6'h0D;
+						hex_buffer[3] <= 6'h0E;
+						hex_buffer[2] <= 6'h0B;
+						hex_buffer[1] <= 6'h1E;
+						hex_buffer[0] <= 6'h10;
+				
+						row = 39;
+						column = 0;
+						num_chars = 5;
+					end
+				
+				6: begin //debug task
 					z = 0;
 				
 					while (z <= 19) begin
@@ -194,35 +242,35 @@ module char_engine(
 				end
 				//data tasks send an address to various sources, and render the received data using the decoder.
 			
-			4: begin //instruction memory indexes 00-31
+			7: begin //instruction memory indexes 00-31
 					data <= reg_index;
 					column = 0;
 					row = reg_index + 1;
 					num_chars = 2;
 				end
 			
-			5: begin //instruction memory indexes 32-63
+			8: begin //instruction memory indexes 32-63
 					data <= reg_index + 32;
 					column = 12;
 					row = reg_index + 1;
 					num_chars = 2;
 				end	
 				
-			6: begin //data_memory indexes 00-31
+			9: begin //data_memory indexes 00-31
 					data <= reg_index;
 					column = 25;
 					row = reg_index + 1;
 					num_chars = 2;
 				end
 				
-			7: begin //data_memory indexes 32-63
+			10: begin //data_memory indexes 32-63
 					data <= reg_index + 32;
 					column = 37;
 					row = reg_index + 1;
 					num_chars = 2;
 				end
 				
-			8: begin //instruction memory data 00-31
+			11: begin //instruction memory data 00-31
 					data <= ins_data;
 					column = 2;
 					row = reg_index + 1;
@@ -230,7 +278,7 @@ module char_engine(
 					hex_buffer[8] <= 6'h27;
 				end
 				
-			9: begin //instruction memory data 32-63
+			12: begin //instruction memory data 32-63
 					data <= ins_data;
 					column = 14;
 					row = reg_index + 1;
@@ -238,7 +286,7 @@ module char_engine(
 					hex_buffer[8] <= 6'h27;
 				end
 			
-			10: begin //data memory data 00-31
+			13: begin //data memory data 00-31
 					data <= mem_data; 
 					column = 27;
 					row = reg_index + 1;
@@ -246,7 +294,7 @@ module char_engine(
 					hex_buffer[8] <= 6'h27;
 				end
 			
-			11: begin //data memory data 31-63
+			14: begin //data memory data 31-63
 					data <= mem_data; 
 					column = 39;
 					row = reg_index + 1;
@@ -254,7 +302,7 @@ module char_engine(
 					hex_buffer[8] <= 6'h27;
 				end
 				
-			12: begin //register indexes
+			15: begin //register indexes
 					data <= 0;
 					data[4:0] <= reg_index;
 					column = 50;
@@ -262,7 +310,7 @@ module char_engine(
 					num_chars = 2;
 				end
 				
-			13: begin // register data
+			16: begin // register data
 					reg_sw <= reg_index;
 					data <= reg_data;
 					column = 52;
@@ -270,12 +318,21 @@ module char_engine(
 					num_chars = 9;
 					hex_buffer[8] <= 6'h27;
 					if (slice_delay == 1) reg_index = reg_index + 1;
-					if (reg_index == 32) begin
+					if (reg_index == 32) begin //this resets the register index variable to zero once it reaches 32
 						reg_index = 0;
 					end
 				end
+			17: begin //Cycles data
+					data <= cycle_counter; 
+					column = 8;
+					row = 35;
+					num_chars = 4;
+				end
+			
+			//18: begin //Program counter data
+			
 							
-			default: data_index = 2;
+			default: data_index = 5;
 		endcase
 	endtask
 	
