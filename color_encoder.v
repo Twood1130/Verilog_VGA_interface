@@ -1,5 +1,6 @@
 //version 2
 //compatible with the DE2-115 boards VGA DAC
+//1-bit color version
 
 module color_encoder(
 

@@ -5,6 +5,7 @@
 //This character display enginne is designed to work with CPU developement projects, and displays various information from the project onto a vga-monitor.
 //There is a built in hex engine that runs off the 3 data sources from the project.
 //Characters are 8 * 8 pixels each with a blank line above each character, allowing allowing 80 * 53 characters on screen.
+//The memory mapping takes into account only a 640*480 screen resolution
 
 module char_engine(
 	input wire clock,
@@ -15,9 +16,13 @@ module char_engine(
 	input wire [31:0] reg_data,
 	input wire [15:0] prg_counter,
 	input wire [15:0]	cycle_counter,
-	input wire [15:0] debug, //debug input
+	input wire [31:0] debug, //debug input
+	input wire [31:0] gp_reg_1, //General Purpose Register inputs
+	input wire [31:0] gp_reg_2,
+	input wire [31:0] gp_reg_3,
+	input wire [31:0] gp_reg_4,
 	
-	output reg [7:0] mem_out,
+	output reg [7:0] mem_out, //if everything is backwards, swap the bit order on this output and recompile!
 	output reg [15:0] mem_add,
 	output mem_write,
 	
@@ -29,15 +34,23 @@ module char_engine(
 	
 	reg [6:0] hex_digit;
 	reg [31:0] data;
-	reg [5:0] hex_buffer[0:19];
-	reg [5:0] debug_prebuffer[0:15];
-	reg [5:0] debug_buffer[0:19];
+	reg [5:0] hex_buffer[0:(MAX_STRING_LENGTH - 1)];
+	reg [5:0] debug_prebuffer[0:31];
+	reg [5:0] debug_buffer[0:38];
 	reg [15:0] pc_history[0:9];
 	reg [63:0] mem_buffer;
 	
+	parameter HORI_OFFSET = 0; //sets the horizontal offset of the memory renderer, only use if the top of the screen gets cut off.
+	parameter NUM_LABEL_TASKS = 13; // This tells the code where to start tasks that require data manipulation, this must be set as you add more labels, debug tasks must be part of this number
+	parameter MAX_STRING_LENGTH = 20; //Generally you do not need to modify this, but it will change the global maximum string length (default = 20)
+	parameter DEBUG_TRUE = 6'h01; //This will change the charcter used when a debug value comes back as true
+	parameter DEBUG_FALSE = 6'h00; //This will change the character used when a debug value comes back as false
+	
+	
+	
 	integer debug_count;
 	
-	integer data_index, reg_index, row, column, slice_delay, decode_delay, num_chars, k, x, y, z, spaces;
+	integer data_index, reg_index, row, column, slice_delay, decode_delay, num_chars, k, x, y, z;
 	
 	initial begin
 	slice_delay = 0; //initial values for the character renderer
@@ -54,7 +67,7 @@ module char_engine(
 		if (x < 0) begin //source and slice steps
 			if (slice_delay == 0) data_index = data_index + 1;
 			source_data();
-			if (data_index > 6) slice_data ();
+			if (data_index > NUM_LABEL_TASKS) slice_data ();
 			slice_delay = slice_delay + 1;
 			if (slice_delay == 2) begin
 				x = num_chars - 1;
@@ -77,7 +90,7 @@ module char_engine(
 		
 		else if (y >= 0) begin //this step writes to memory
 			k = (y * 8) - 1;
-			mem_add <= (80 * y) + (800 * row) + (num_chars - (x + 1)) + (column) + 80; //this complicated formula tranlates information into a linear address
+			mem_add <= (80 * y) + (800 * row) + (num_chars - (x + 1)) + (column) + (HORI_OFFSET * 80); //this complicated formula tranlates information into a linear address
 			mem_out <= mem_buffer[k -: 8];
 			y = y - 1;
 		end
@@ -85,10 +98,10 @@ module char_engine(
 	
 	always @(posedge clock) begin //debug indicators are set here
 		
-		if (debug[debug_count] == 1) debug_prebuffer[debug_count + spaces] <= 6'h1D; //this is the printed character for a true result, default = T
-		else debug_prebuffer[debug_count + spaces] <= 6'h0F; //this is the character printed for a false result, default = F
+		if (debug[debug_count] == 1) debug_prebuffer[debug_count] <= DEBUG_TRUE; //this is the printed character for a true result, default = T
+		else debug_prebuffer[debug_count] <= DEBUG_FALSE; //this is the character printed for a false result, default = F
 		debug_count = debug_count + 1;
-		if (debug_count > 15) debug_count = 0;
+		if (debug_count > 31) debug_count = 0;
 	end
 	
 	always @(posedge project_clock) begin //the program counter history is set by this code, it is driven by the clock of the project so that the data does not update too fast
@@ -107,7 +120,8 @@ module char_engine(
 	end
 	always begin 
 	//this is brute force way of building the debug buffer with spaces in it, the other methods used more logic units, and did not work properly due to timing issues
-	//this method uses constant assignment to build the proper string, which uses far fewer LUs.			
+	//this method uses constant assignment to build the proper string, which uses far fewer LUs.	
+	// I tried doing this procedurely using a loop, but found that it ran into timing issues, so I just use the direct method.
 		debug_buffer[0] = 6'h24;
 		debug_buffer[1] = debug_prebuffer[0];
 		debug_buffer[2] = debug_prebuffer[1];
@@ -128,14 +142,33 @@ module char_engine(
 		debug_buffer[17] = debug_prebuffer[13];
 		debug_buffer[18] = debug_prebuffer[14];
 		debug_buffer[19] = debug_prebuffer[15];
+		debug_buffer[20] = debug_prebuffer[16];
+		debug_buffer[21] = debug_prebuffer[17];
+		debug_buffer[22] = debug_prebuffer[18];
+		debug_buffer[23] = debug_prebuffer[19];
+		debug_buffer[24] = 6'h24;
+		debug_buffer[25] = debug_prebuffer[20];
+		debug_buffer[26] = debug_prebuffer[21];
+		debug_buffer[27] = debug_prebuffer[22];
+		debug_buffer[28] = debug_prebuffer[23];
+		debug_buffer[29] = 6'h24;
+		debug_buffer[30] = debug_prebuffer[24];
+		debug_buffer[31] = debug_prebuffer[25];
+		debug_buffer[32] = debug_prebuffer[26];
+		debug_buffer[33] = debug_prebuffer[27];
+		debug_buffer[34] = 6'h24;
+		debug_buffer[35] = debug_prebuffer[28];
+		debug_buffer[36] = debug_prebuffer[29];
+		debug_buffer[37] = debug_prebuffer[30];
+		debug_buffer[38] = debug_prebuffer[31];
 	end
 	
 	task source_data; //This part of the module is the main task list for the renderer, it can be utilized in a variety of ways to render information.
 			
-		if (data_index == 10) ins_sw <= reg_index; //this code needs to be checked for accuracy, and may need to be shifted up by one.
-		if (data_index == 11) ins_sw <= reg_index + 32; //this code requests the data from memory to be printed on screen
-		if (data_index == 12) mem_sw <= reg_index;
-		if (data_index == 13) mem_sw <= reg_index + 32;
+		if (data_index == NUM_LABEL_TASKS + 4) ins_sw <= reg_index;
+		if (data_index == NUM_LABEL_TASKS + 5) ins_sw <= reg_index + 32; //this code requests the data from memory to be printed on screen
+		if (data_index == NUM_LABEL_TASKS + 6) mem_sw <= reg_index;
+		if (data_index == NUM_LABEL_TASKS + 7) mem_sw <= reg_index + 32; //it always request the data one clock ahead of time, so that the data is ready when the system reads it
 		
 		
 		case (data_index)
@@ -192,23 +225,21 @@ module char_engine(
 					num_chars = 9;
 				end
 				
-				3: begin //PRG. COUNTER label
-						hex_buffer[11] <= 6'h19;
-						hex_buffer[10] <= 6'h1B;
-						hex_buffer[9] <= 6'h10;
-						hex_buffer[8] <= 6'h28;
+				3: begin //PC HISTORY label
+						hex_buffer[9] <= 6'h19;
+						hex_buffer[8] <= 6'h0C;
 						hex_buffer[7] <= 6'h24;
-						hex_buffer[6] <= 6'h0C;
-						hex_buffer[5] <= 6'h18;
-						hex_buffer[4] <= 6'h1E;
-						hex_buffer[3] <= 6'h17;
-						hex_buffer[2] <= 6'h1D;
-						hex_buffer[1] <= 6'h0E;
-						hex_buffer[0] <= 6'h1B;			
+						hex_buffer[6] <= 6'h11;
+						hex_buffer[5] <= 6'h12;
+						hex_buffer[4] <= 6'h1C;
+						hex_buffer[3] <= 6'h1D;
+						hex_buffer[2] <= 6'h18;
+						hex_buffer[1] <= 6'h1B;
+						hex_buffer[0] <= 6'h22;			
 					
 						row  = 0;
 						column = 63;
-						num_chars = 12;
+						num_chars = 10;
 					end
 					
 				4: begin //CYCLES label
@@ -235,8 +266,113 @@ module char_engine(
 						column = 0;
 						num_chars = 5;
 					end
+					
+				6: begin //GP REGISTER 1 label
+						hex_buffer[12] <= 6'h10;
+						hex_buffer[11] <= 6'h19;
+						hex_buffer[10] <= 6'h24;
+						hex_buffer[9] <= 6'h1B;
+						hex_buffer[8] <= 6'h0E;
+						hex_buffer[7] <= 6'h10;
+						hex_buffer[6] <= 6'h12;
+						hex_buffer[5] <= 6'h1C;
+						hex_buffer[4] <= 6'h1D;
+						hex_buffer[3] <= 6'h0E;
+						hex_buffer[2] <= 6'h1B;
+						hex_buffer[1] <= 6'h24;
+						hex_buffer[0] <= 6'h01;
+						
+						row = 13;
+						column = 63;
+						num_chars = 13;
+					end
+					
+				7: begin //GP REGISTER 2 label
+						hex_buffer[12] <= 6'h10;
+						hex_buffer[11] <= 6'h19;
+						hex_buffer[10] <= 6'h24;
+						hex_buffer[9] <= 6'h1B;
+						hex_buffer[8] <= 6'h0E;
+						hex_buffer[7] <= 6'h10;
+						hex_buffer[6] <= 6'h12;
+						hex_buffer[5] <= 6'h1C;
+						hex_buffer[4] <= 6'h1D;
+						hex_buffer[3] <= 6'h0E;
+						hex_buffer[2] <= 6'h1B;
+						hex_buffer[1] <= 6'h24;
+						hex_buffer[0] <= 6'h02;
+						
+						row = 16;
+						column = 63;
+						num_chars = 13;
+					end
+					
+				8: begin //GP REGISTER 3 label
+						hex_buffer[12] <= 6'h10;
+						hex_buffer[11] <= 6'h19;
+						hex_buffer[10] <= 6'h24;
+						hex_buffer[9] <= 6'h1B;
+						hex_buffer[8] <= 6'h0E;
+						hex_buffer[7] <= 6'h10;
+						hex_buffer[6] <= 6'h12;
+						hex_buffer[5] <= 6'h1C;
+						hex_buffer[4] <= 6'h1D;
+						hex_buffer[3] <= 6'h0E;
+						hex_buffer[2] <= 6'h1B;
+						hex_buffer[1] <= 6'h24;
+						hex_buffer[0] <= 6'h03;
+						
+						row = 19;
+						column = 63;
+						num_chars = 13;
+					end
+			
+				9: begin //GP REGISTER 4 label
+						hex_buffer[12] <= 6'h10;
+						hex_buffer[11] <= 6'h19;
+						hex_buffer[10] <= 6'h24;
+						hex_buffer[9] <= 6'h1B;
+						hex_buffer[8] <= 6'h0E;
+						hex_buffer[7] <= 6'h10;
+						hex_buffer[6] <= 6'h12;
+						hex_buffer[5] <= 6'h1C;
+						hex_buffer[4] <= 6'h1D;
+						hex_buffer[3] <= 6'h0E;
+						hex_buffer[2] <= 6'h1B;
+						hex_buffer[1] <= 6'h24;
+						hex_buffer[0] <= 6'h04;
+						
+						row = 22;
+						column = 63;
+						num_chars = 13;
+					end
+					
+				10: begin //00-15: label
+						hex_buffer[5] <= 6'h00;
+						hex_buffer[4] <= 6'h00;
+						hex_buffer[3] <= 6'h26;
+						hex_buffer[2] <= 6'h01;
+						hex_buffer[1] <= 6'h05;
+						hex_buffer[0] <= 6'h27;
+						
+						row = 40;
+						column = 0;
+						num_chars = 6;
+					end
+				11: begin //16-31: label
+						hex_buffer[5] <= 6'h01;
+						hex_buffer[4] <= 6'h06;
+						hex_buffer[3] <= 6'h26;
+						hex_buffer[2] <= 6'h03;
+						hex_buffer[1] <= 6'h01;
+						hex_buffer[0] <= 6'h27;
+					
+						row = 42;
+						column = 0;
+						num_chars = 6;
+					end
 				
-				6: begin //debug task
+				12: begin //debug 0-15 task
 					z = 0;
 				
 					while (z <= 19) begin
@@ -244,41 +380,54 @@ module char_engine(
 						z = z + 1;
 					end
 					
-					column = 0;
+					column = 6;
 					row = 40;
 					num_chars = 20;
 				end
+				
+			13: begin //debug 16-31 task
+					z = 0;
+				
+					while (z <= 18) begin
+						hex_buffer[z] = debug_buffer[z + 20];
+						z = z + 1;
+					end
+					
+					column = 6;
+					row = 42;
+					num_chars = 19;
+				end
 				//data tasks send an address to various sources, and render the received data using the decoder.
 			
-			7: begin //instruction memory indexes 00-31
+			(NUM_LABEL_TASKS + 1): begin //instruction memory indexes 00-31
 					data <= reg_index;
 					column = 0;
 					row = reg_index + 1;
 					num_chars = 2;
 				end
 			
-			8: begin //instruction memory indexes 32-63
+			(NUM_LABEL_TASKS + 2): begin //instruction memory indexes 32-63
 					data <= reg_index + 32;
 					column = 12;
 					row = reg_index + 1;
 					num_chars = 2;
 				end	
 				
-			9: begin //data_memory indexes 00-31
+			(NUM_LABEL_TASKS + 3): begin //data_memory indexes 00-31
 					data <= reg_index;
 					column = 25;
 					row = reg_index + 1;
 					num_chars = 2;
 				end
 				
-			10: begin //data_memory indexes 32-63
+			(NUM_LABEL_TASKS + 4): begin //data_memory indexes 32-63
 					data <= reg_index + 32;
 					column = 37;
 					row = reg_index + 1;
 					num_chars = 2;
 				end
 				
-			11: begin //instruction memory data 00-31
+			(NUM_LABEL_TASKS + 5): begin //instruction memory data 00-31
 					data <= ins_data;
 					column = 2;
 					row = reg_index + 1;
@@ -286,7 +435,7 @@ module char_engine(
 					hex_buffer[8] <= 6'h27;
 				end
 				
-			12: begin //instruction memory data 32-63
+			(NUM_LABEL_TASKS + 6): begin //instruction memory data 32-63
 					data <= ins_data;
 					column = 14;
 					row = reg_index + 1;
@@ -294,7 +443,7 @@ module char_engine(
 					hex_buffer[8] <= 6'h27;
 				end
 			
-			13: begin //data memory data 00-31
+			(NUM_LABEL_TASKS + 7): begin //data memory data 00-31
 					data <= mem_data; 
 					column = 27;
 					row = reg_index + 1;
@@ -302,7 +451,7 @@ module char_engine(
 					hex_buffer[8] <= 6'h27;
 				end
 			
-			14: begin //data memory data 31-63
+			(NUM_LABEL_TASKS + 8): begin //data memory data 31-63
 					data <= mem_data; 
 					column = 39;
 					row = reg_index + 1;
@@ -310,7 +459,7 @@ module char_engine(
 					hex_buffer[8] <= 6'h27;
 				end
 				
-			15: begin //register indexes
+			(NUM_LABEL_TASKS + 9): begin //register indexes
 					data <= 0;
 					data[4:0] <= reg_index;
 					column = 50;
@@ -318,7 +467,7 @@ module char_engine(
 					num_chars = 2;
 				end
 				
-			16: begin // register data
+			(NUM_LABEL_TASKS + 10): begin // register data
 					reg_sw <= reg_index;
 					data <= reg_data;
 					column = 52;
@@ -331,14 +480,14 @@ module char_engine(
 					end
 				end
 			
-			17: begin //Cycles data
+			(NUM_LABEL_TASKS + 11): begin //Cycles data
 					data <= cycle_counter; 
 					column = 8;
 					row = 35;
 					num_chars = 4;
 				end
 			
-			18: begin //pc history data
+			(NUM_LABEL_TASKS + 12): begin //pc history data
 					if (reg_index <= 9) begin
 						data <= pc_history[reg_index];
 						row = reg_index + 1;
@@ -349,11 +498,35 @@ module char_engine(
 					else num_chars = 0; //setting num chars to 0 causes nothing to be written to memory, essentially aborting the source_data task
 				
 				end 
-			
-			//18: begin //Program counter data
-			
-							
-			default: data_index = 5;
+			(NUM_LABEL_TASKS + 13): begin
+					data <= gp_reg_1;
+					column = 63;
+					row = 14;
+					num_chars = 8;
+				end
+		
+			(NUM_LABEL_TASKS + 14): begin
+					data <= gp_reg_2;
+					column = 63;
+					row = 17;
+					num_chars = 8;
+				end
+				
+			(NUM_LABEL_TASKS + 15): begin
+					data <= gp_reg_3;
+					column = 63;
+					row = 20;
+					num_chars = 8;
+				end
+
+			(NUM_LABEL_TASKS + 16): begin
+					data <= gp_reg_4;
+					column = 63;
+					row = 23;
+					num_chars = 8;
+				end
+				
+			default: data_index = NUM_LABEL_TASKS;
 		endcase
 	endtask
 	
