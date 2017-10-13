@@ -169,7 +169,9 @@ module char_engine(
 		if (data_index == NUM_LABEL_TASKS + 5) ins_sw <= reg_index + 32; //this code requests the data from memory to be printed on screen
 		if (data_index == NUM_LABEL_TASKS + 6) mem_sw <= reg_index;
 		if (data_index == NUM_LABEL_TASKS + 7) mem_sw <= reg_index + 32; //it always request the data one clock ahead of time, so that the data is ready when the system reads it
-		
+		// Following two lines added by Nicholas LaJoie (@spudniche on github) 
+		if (data_index == NUM_LABEL_TASKS + 8) reg_sw <= reg_index; 
+		if (data_index == NUM_LABEL_TASKS + 9) reg_sw <= reg_index + 32; 
 		
 		case (data_index)
 		//in the case of text labels, the hex_buffer is set manually for each character, and the data is only written to memory once.
