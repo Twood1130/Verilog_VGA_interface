@@ -15,7 +15,7 @@ module char_engine(
 	input wire [31:0] mem_data,
 	input wire [31:0] reg_data,
 	input wire [15:0] prg_counter,
-	input wire [15:0]	cycle_counter,
+	input wire [15:0] cycle_counter,
 	input wire [31:0] debug, //debug input
 	input wire [31:0] gp_reg_1, //General Purpose Register inputs
 	input wire [31:0] gp_reg_2,
@@ -171,7 +171,7 @@ module char_engine(
 		if (data_index == NUM_LABEL_TASKS + 7) mem_sw <= reg_index + 32; //it always request the data one clock ahead of time, so that the data is ready when the system reads it
 		// Following two lines added by Nicholas LaJoie (@spudniche on github) 
 		if (data_index == NUM_LABEL_TASKS + 8) reg_sw <= reg_index; 
-		if (data_index == NUM_LABEL_TASKS + 9) reg_sw <= reg_index + 32; 
+		//if (data_index == NUM_LABEL_TASKS + 9) reg_sw <= reg_index + 32;  //this line is unnecessary for a 32-entry register file-- Tristan
 		
 		case (data_index)
 		//in the case of text labels, the hex_buffer is set manually for each character, and the data is only written to memory once.
